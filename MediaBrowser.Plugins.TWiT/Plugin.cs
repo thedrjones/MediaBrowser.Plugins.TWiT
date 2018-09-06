@@ -3,6 +3,8 @@ using MediaBrowser.Plugins.TWiT.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Serialization;
+using System.IO;
+using MediaBrowser.Model.Drawing;
 
 namespace MediaBrowser.Plugins.TWiT
 {
@@ -41,6 +43,20 @@ namespace MediaBrowser.Plugins.TWiT
             get
             {
                 return "Watch your favorite TWiT.tv webcasts.";
+            }
+        }
+
+        public Stream GetThumbImage()
+        {
+            var type = GetType();
+            return type.Assembly.GetManifestResourceStream(type.Namespace + ".Images.thumb.jpg");
+        }
+
+        public ImageFormat ThumbImageFormat
+        {
+            get
+            {
+                return ImageFormat.Jpg;
             }
         }
 
