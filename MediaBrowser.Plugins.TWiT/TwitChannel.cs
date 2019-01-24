@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Drawing;
+using System.Text.RegularExpressions;
 
 namespace MediaBrowser.Plugins.TWiT
 {
@@ -127,35 +128,25 @@ namespace MediaBrowser.Plugins.TWiT
         {
             var twitChannels = new List<ChannelItemInfo>();
 
-            var masterChannelList = new List<KeyValuePair<string,string>>
+            var masterChannelList = new List<KeyValuePair<string, string>>
             {
                 new KeyValuePair<string, string>("aaa", "All About Android"),
-                new KeyValuePair<string, string>("arena", "Android App Arena"),
-                new KeyValuePair<string, string>("byb", "Before You Buy"),
-                new KeyValuePair<string, string>("code", "Coding 101"),
                 new KeyValuePair<string, string>("floss", "FLOSS Weekly"),
-                new KeyValuePair<string, string>("dgw", "The Giz Wiz"),
                 new KeyValuePair<string, string>("hn", "Ham Nation"),
                 new KeyValuePair<string, string>("htg", "Home Theater Geeks"),
-                new KeyValuePair<string, string>("ifive", "iFive For The iPhone"),
-                new KeyValuePair<string, string>("ipad", "iPad Today"),
-                new KeyValuePair<string, string>("kh", "Know How"),
+                new KeyValuePair<string, string>("ipad", "iOS Today"),
                 new KeyValuePair<string, string>("mbw", "MacBreak Weekly"),
-                new KeyValuePair<string, string>("mm", "Marketing Mavericks"),
-                new KeyValuePair<string, string>("omgcraft", "OMGcraft"),
                 new KeyValuePair<string, string>("sn", "Security Now"),
-                new KeyValuePair<string, string>("natn", "The Social Hour"),
+                new KeyValuePair<string, string>("tnw", "Tech News Weekly"),
                 new KeyValuePair<string, string>("ttg", "The Tech Guy"),
-                new KeyValuePair<string, string>("tnt", "Tech News Today"),
-                new KeyValuePair<string, string>("tn2n", "Tech News 2Night"),
                 new KeyValuePair<string, string>("twich", "This Week in Computer Hardware"),
                 new KeyValuePair<string, string>("twiet", "This Week in Enterprise Tech"),
                 new KeyValuePair<string, string>("twig", "This Week in Google"),
-                new KeyValuePair<string, string>("twil", "This Week in Law"),
                 new KeyValuePair<string, string>("twit", "This Week in Tech"),
                 new KeyValuePair<string, string>("tri", "Triangulation"),
                 new KeyValuePair<string, string>("specials", "TWiT Live Specials"),
-                new KeyValuePair<string, string>("ww", "Windows Weekly")
+                new KeyValuePair<string, string>("ww", "Windows Weekly"),
+                new KeyValuePair<string, string>("bits","TWiT Bits"),
             };
 
             var altArtValues = new Dictionary<string, string>();
@@ -234,38 +225,61 @@ namespace MediaBrowser.Plugins.TWiT
                     new ChannelMediaInfo
                     {
                         Protocol = MediaProtocol.Http,
-                        Path = i.link,
+                        Path = i.enclosure.url,
                         Width = 1280,
                         Height = 720,
+                        Container = Container.MP4,
                     }.ToMediaSource()
                 };
 
-                var runtimeArray = i.duration.Split(':');
-                int hours;
-                int minutes;
-                int.TryParse(runtimeArray[0], out hours);
-                int.TryParse(runtimeArray[1], out minutes);
-                long runtime = (hours * 60) + minutes;
-                runtime = TimeSpan.FromMinutes(runtime).Ticks;
-
-                items.Add(new ChannelItemInfo 
+                if (!long.TryParse(i.duration, out long runtime))
                 {
-                    ContentType = ChannelMediaContentType.Podcast,
-                    ImageUrl = "http://feeds.twit.tv/coverart/" + query.FolderId + "600.jpg",
-                    MediaType = ChannelMediaType.Video,
-                    MediaSources = mediaInfo,
-                    RunTimeTicks = runtime,
-                    Name = i.title,
-                    Id = i.link,
-                    Type = ChannelItemType.Media,
-                    DateCreated = !String.IsNullOrEmpty(i.pubDate) ?
-                        Convert.ToDateTime(i.pubDate) : (DateTime?)null,
-                    PremiereDate = !String.IsNullOrEmpty(i.pubDate) ?
-                        Convert.ToDateTime(i.pubDate) : (DateTime?)null,
-                    Overview = i.summary,
-                });
-            }
+                    var runtimeArray = i.duration.Split(':');
+                    int hours=0;
+                    int minutes=0;
+                    int seconds = 0;
 
+                    if (runtimeArray.Length == 3)
+                    {
+                        int.TryParse(runtimeArray[0], out hours);
+                        int.TryParse(runtimeArray[1], out minutes);
+                        int.TryParse(runtimeArray[2], out seconds);
+                    }
+                    else if (runtimeArray.Length == 2)
+                    {
+                        int.TryParse(runtimeArray[0], out minutes);
+                        int.TryParse(runtimeArray[1], out seconds);
+                    }
+                    runtime = (hours * 60) + minutes + seconds;
+                }
+                runtime = TimeSpan.FromSeconds(runtime).Ticks;
+
+
+                try
+                {
+                    items.Add(new ChannelItemInfo
+                    {
+                        ContentType = ChannelMediaContentType.Podcast,
+                        ImageUrl = (i.content!=null && !String.IsNullOrEmpty(i.content.thumbnail.FirstOrDefault().url)) ?
+                            i.content.thumbnail.FirstOrDefault().url : "http://feeds.twit.tv/coverart/" + query.FolderId + "600.jpg",
+                        MediaType = ChannelMediaType.Video,
+                        MediaSources = mediaInfo,
+                        RunTimeTicks = runtime,
+                        Name = i.title,
+                        Id = i.link,
+                        Type = ChannelItemType.Media,
+                        DateCreated = !String.IsNullOrEmpty(i.pubDate) ?
+                            Convert.ToDateTime(i.pubDate.Substring(0,25)) : (DateTime?)null,
+                        PremiereDate = !String.IsNullOrEmpty(i.pubDate) ?
+                            Convert.ToDateTime(i.pubDate.Substring(0,25)) : (DateTime?)null,
+                        Overview = StripTags(i.summary),
+                    });
+                }
+                catch (Exception x)
+                {
+                    _logger.Info("TWiT caught {0} when adding ChannelItemInfo for {1}", x.Message, i.title);
+                }
+            }
             return new ChannelItemResult
             {
                 Items = items,
@@ -286,6 +300,20 @@ namespace MediaBrowser.Plugins.TWiT
         public bool IsEnabledFor(string userId)
         {
             return true;
+        }
+
+
+        /// <summary>
+        /// Compiled regular expression for performance for replacing HTML Tags.
+        /// </summary>
+        internal static Regex _htmlRegex = new Regex("<.*?>", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Remove HTML from string with compiled Regex.
+        /// </summary>
+        internal static string StripTags(string source)
+        {
+            return _htmlRegex.Replace(source, string.Empty);
         }
 
         //IRequiresMediaInfoCallback Interface Implementation

@@ -302,6 +302,10 @@ namespace MediaBrowser.Plugins.TWiT
         public contentRating[] rating { get; set; }
 
         /// <remarks/>
+        [XmlElement("thumbnail")]
+        public contentThumbnail[] thumbnail { get; set; }
+
+        /// <remarks/>
         [XmlAttribute()]
         public string url { get; set; }
 
@@ -316,6 +320,19 @@ namespace MediaBrowser.Plugins.TWiT
         /// <remarks/>
         [XmlAttribute()]
         public string medium { get; set; }
+    }
+
+    [XmlType(AnonymousType = true, Namespace = "http://search.yahoo.com/mrss/")]
+    public partial class contentThumbnail
+    {
+        [XmlAttribute()]
+        public string url { get; set; }
+
+        [XmlAttribute()]
+        public uint width { get; set; }
+
+        [XmlAttribute()]
+        public uint height { get; set; }
     }
 
     /// <remarks/>
