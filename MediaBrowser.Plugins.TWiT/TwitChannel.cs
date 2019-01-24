@@ -250,7 +250,7 @@ namespace MediaBrowser.Plugins.TWiT
                         int.TryParse(runtimeArray[0], out minutes);
                         int.TryParse(runtimeArray[1], out seconds);
                     }
-                    runtime = (hours * 60) + minutes + seconds;
+                    runtime = (hours * 3600) + (minutes * 60) + seconds;
                 }
                 runtime = TimeSpan.FromSeconds(runtime).Ticks;
 
@@ -277,7 +277,7 @@ namespace MediaBrowser.Plugins.TWiT
                 }
                 catch (Exception x)
                 {
-                    _logger.Info("TWiT caught {0} when adding ChannelItemInfo for {1}", x.Message, i.title);
+                    _logger.Debug("TWiT caught exception {0} when adding ChannelItemInfo for {1}", x.Message, i.title);
                 }
             }
             return new ChannelItemResult
