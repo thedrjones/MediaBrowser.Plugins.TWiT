@@ -1,8 +1,12 @@
 Media Browser 3 Server - TWiT.tv Channel Plugin
 ===============================================
 
-Note from thedrjones
+Note from thedrjones:
+
 Please note, this fork is unmaintained, although it's code does mostly work to parse the TWiT network XML feeds. Instead I've started writing an integration using the TWiT API. More info here: https://github.com/thedrjones/TwitNetwork
+
+
+
 
 
 
